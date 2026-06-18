@@ -1,77 +1,59 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { io, Socket } from 'socket.io-client';
-import { API_URL } from '../config';
-import { TOKEN_KEY } from '../api/client';
+import { RealtimeChannel } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
-import { FamilyRequest } from '../types';
 
-export type RequestEventName =
-  | 'request:created'
-  | 'request:accepted'
-  | 'request:completed'
-  | 'request:replied';
+type ChangeListener = () => void;
 
-type Listener = (event: RequestEventName, request: FamilyRequest) => void;
-
-interface SocketContextValue {
+interface RealtimeContextValue {
   connected: boolean;
-  /** Subscribe to all request events. Returns an unsubscribe function. */
-  subscribe: (listener: Listener) => () => void;
+  /** Called whenever a request in the family changes. Returns an unsubscribe fn. */
+  subscribe: (listener: ChangeListener) => () => void;
 }
 
-const SocketContext = createContext<SocketContextValue | undefined>(undefined);
+const RealtimeContext = createContext<RealtimeContextValue | undefined>(undefined);
 
-const EVENTS: RequestEventName[] = [
-  'request:created',
-  'request:accepted',
-  'request:completed',
-  'request:replied',
-];
-
+/**
+ * Subscribes to Postgres changes on the `requests` table (scoped to the user's
+ * family) and notifies listeners so they can refetch. Replaces the previous
+ * Socket.io server with Supabase Realtime — no backend to host.
+ */
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [connected, setConnected] = useState(false);
-  const socketRef = useRef<Socket | null>(null);
-  const listenersRef = useRef<Set<Listener>>(new Set());
+  const listenersRef = useRef<Set<ChangeListener>>(new Set());
 
   useEffect(() => {
     if (!user) {
-      socketRef.current?.disconnect();
-      socketRef.current = null;
       setConnected(false);
       return;
     }
 
-    let active = true;
-    (async () => {
-      const token = await AsyncStorage.getItem(TOKEN_KEY);
-      if (!token || !active) return;
-
-      const socket = io(API_URL, {
-        auth: { token },
-        transports: ['websocket'],
+    const channel: RealtimeChannel = supabase
+      .channel(`requests:${user.familyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'requests',
+          filter: `family_id=eq.${user.familyId}`,
+        },
+        () => {
+          listenersRef.current.forEach((listener) => listener());
+        },
+      )
+      .subscribe((status) => {
+        setConnected(status === 'SUBSCRIBED');
       });
-      socketRef.current = socket;
-
-      socket.on('connect', () => setConnected(true));
-      socket.on('disconnect', () => setConnected(false));
-
-      EVENTS.forEach((event) => {
-        socket.on(event, (request: FamilyRequest) => {
-          listenersRef.current.forEach((listener) => listener(event, request));
-        });
-      });
-    })();
 
     return () => {
-      active = false;
-      socketRef.current?.disconnect();
-      socketRef.current = null;
+      supabase.removeChannel(channel);
+      setConnected(false);
     };
   }, [user]);
 
-  const subscribe = (listener: Listener) => {
+  const subscribe = (listener: ChangeListener) => {
     listenersRef.current.add(listener);
     return () => {
       listenersRef.current.delete(listener);
@@ -79,14 +61,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SocketContext.Provider value={{ connected, subscribe }}>
+    <RealtimeContext.Provider value={{ connected, subscribe }}>
       {children}
-    </SocketContext.Provider>
+    </RealtimeContext.Provider>
   );
 }
 
-export function useSocket(): SocketContextValue {
-  const ctx = useContext(SocketContext);
+export function useSocket(): RealtimeContextValue {
+  const ctx = useContext(RealtimeContext);
   if (!ctx) throw new Error('useSocket must be used within a SocketProvider');
   return ctx;
 }

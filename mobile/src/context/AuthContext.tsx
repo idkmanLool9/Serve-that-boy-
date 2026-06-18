@@ -1,21 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  fetchMe,
-  login as apiLogin,
-  savePushToken,
-  signup as apiSignup,
-  SignupInput,
-  TOKEN_KEY,
-} from '../api/client';
-import { registerForPushNotifications } from '../notifications';
-import { AuthResponse, User } from '../types';
+import { supabase } from '../lib/supabase';
+import { fetchMe, login as apiLogin, logout as apiLogout, signup as apiSignup, SignupInput } from '../api/client';
+import { User } from '../types';
 
 interface AuthContextValue {
   user: User | null;
   initializing: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  register: (input: SignupInput) => Promise<void>;
+  register: (input: SignupInput) => Promise<{ needsConfirmation: boolean }>;
   signOut: () => Promise<void>;
 }
 
@@ -25,52 +17,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(true);
 
-  // Restore session on launch.
-  useEffect(() => {
-    (async () => {
-      try {
-        const token = await AsyncStorage.getItem(TOKEN_KEY);
-        if (token) {
-          const me = await fetchMe();
-          setUser(me);
-        }
-      } catch {
-        await AsyncStorage.removeItem(TOKEN_KEY);
-      } finally {
-        setInitializing(false);
-      }
-    })();
-  }, []);
-
-  // After a successful auth, persist the token, set the user, and register push.
-  const handleAuth = useCallback(async (res: AuthResponse) => {
-    await AsyncStorage.setItem(TOKEN_KEY, res.token);
-    setUser(res.user);
-    const pushToken = await registerForPushNotifications();
-    if (pushToken) {
-      await savePushToken(pushToken).catch(() => undefined);
+  const loadProfile = useCallback(async () => {
+    try {
+      const me = await fetchMe();
+      setUser(me);
+    } catch {
+      setUser(null);
     }
   }, []);
 
+  useEffect(() => {
+    // Initial session restore.
+    loadProfile().finally(() => setInitializing(false));
+
+    // React to sign-in / sign-out / token refresh.
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        loadProfile();
+      }
+    });
+
+    return () => sub.subscription.unsubscribe();
+  }, [loadProfile]);
+
   const signIn = useCallback(
     async (email: string, password: string) => {
-      const res = await apiLogin(email, password);
-      await handleAuth(res);
+      await apiLogin(email, password);
+      await loadProfile();
     },
-    [handleAuth],
+    [loadProfile],
   );
 
-  const register = useCallback(
-    async (input: SignupInput) => {
-      const res = await apiSignup(input);
-      await handleAuth(res);
-    },
-    [handleAuth],
-  );
+  const register = useCallback(async (input: SignupInput) => {
+    const res = await apiSignup(input);
+    // If a session was created, onAuthStateChange will load the profile.
+    return res;
+  }, []);
 
   const signOut = useCallback(async () => {
-    await savePushToken(null).catch(() => undefined);
-    await AsyncStorage.removeItem(TOKEN_KEY);
+    await apiLogout();
     setUser(null);
   }, []);
 

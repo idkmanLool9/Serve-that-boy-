@@ -1,0 +1,83 @@
+name: Deploy web app to GitHub Pages
+
+# Builds the Expo web export and publishes it to GitHub Pages.
+# Make sure Pages is enabled with "Source: GitHub Actions"
+# (repo Settings → Pages → Build and deployment → Source → GitHub Actions).
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - claude/family-requests-app-qro3ul
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web export
+        env:
+          # Serve under https://<user>.github.io/<repo>/ — derive the base path
+          # from the repository name so it always matches.
+          EXPO_BASE_URL: /${{ github.event.repository.name }}
+        run: npx expo export --platform web
+
+      - name: Add PWA tags, SPA fallback, and .nojekyll
+        run: |
+          # Copy the public/ assets (manifest + icons) into the export.
+          cp -r public/* dist/ 2>/dev/null || true
+
+          # Inject PWA + iOS "Add to Home Screen" tags into <head>.
+          node -e "const fs=require('fs');const f='dist/index.html';let h=fs.readFileSync(f,'utf8');h=h.replace('</head>', process.env.PWA_TAGS+'</head>');fs.writeFileSync(f,h);"
+
+          # SPA fallback so refreshes/deep links don't 404 on GitHub Pages.
+          cp dist/index.html dist/404.html
+
+          # Prevent GitHub Pages (Jekyll) from ignoring the _expo/ directory.
+          touch dist/.nojekyll
+        env:
+          PWA_TAGS: '<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#6C5CE7"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Family Requests"><link rel="apple-touch-icon" href="icon-192.png">'
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: mobile/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

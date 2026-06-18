@@ -1,83 +1,106 @@
 # Family Requests 👨‍👩‍👧‍👦
 
-A simple, modern mobile app that lets family members send quick requests to each
-other. A **Customer** (e.g. a parent) sends a request — _"bring me an item"_,
-_"get me an ice cream"_, _"bring my clothes downstairs"_ — and a **Server**
-(e.g. a child) receives it instantly, accepts it, completes it, and can send a
-short reply.
+A simple, modern app that lets family members send quick requests to each other.
+A **Customer** (e.g. a parent) sends a request — _"bring me an item"_, _"get me
+an ice cream"_, _"bring my clothes downstairs"_ — and a **Server** (e.g. a child)
+receives it instantly, accepts it, completes it, and can send a short reply.
 
-This repository is a monorepo containing everything needed to run the product
-end to end:
+The app runs as a **web app hosted on GitHub Pages**, backed by **Supabase**
+(database + auth + realtime). It's free to run, there's no server to babysit,
+and on a phone you can **Add it to your Home Screen** so it feels like a native
+app — no Apple Developer account needed. When you're ready to ship a real native
+iOS/Android app to the stores, the same Expo codebase builds for those too.
 
-| Folder      | What it is                                                        |
-| ----------- | ----------------------------------------------------------------- |
-| `backend/`  | Node.js + Express + TypeScript API, Prisma/SQLite, Socket.io, JWT |
-| `mobile/`   | Expo (React Native) + TypeScript app with dark mode & push        |
+## How it's put together
+
+```
+┌──────────────────────────┐        HTTPS / WebSocket        ┌────────────────────┐
+│  Expo web app (PWA)       │  ───────────────────────────►  │      Supabase       │
+│  hosted on GitHub Pages   │  ◄───────────────────────────  │  Postgres + Auth    │
+│  iOS / Android / desktop  │      realtime updates + RLS     │  Realtime           │
+└──────────────────────────┘                                 └────────────────────┘
+```
+
+| Folder       | What it is                                                              |
+| ------------ | ---------------------------------------------------------------------- |
+| `mobile/`    | Expo (React Native + web) app — the whole UI                           |
+| `supabase/`  | `schema.sql` — the full database (tables, RLS, functions, realtime)    |
+| `.github/`   | GitHub Actions workflow that builds & deploys the web app to Pages     |
+| `backend/`   | _Optional._ A self-hostable Node/Express alternative backend (see note) |
+
+> **Note on `backend/`:** the live app uses Supabase, so you do **not** need to
+> run anything in `backend/`. It's kept as an optional self-hosted alternative
+> (and a head start for native push notifications later). You can ignore or
+> delete it.
 
 ## Features
 
 - **Two roles** — Customer (parent) and Server (child).
-- **Quick requests** — one-tap presets (item, ice cream, clothes, help) plus
-  free-form requests with an optional note.
-- **Instant delivery** — requests are pushed in real time over WebSockets and
-  via push notifications.
-- **Status tracking** — every request moves through `PENDING → ACCEPTED →
-  COMPLETED`.
-- **Replies** — the Server can send a short message back to the Customer.
-- **Request history** — full searchable history per family.
-- **User accounts** — email/password auth with hashed passwords and JWTs.
-- **Families** — create a family, share a short invite code, and everyone joins.
-- **Dark mode** — automatic (follows the device) or manually toggled.
-- **Modern, clean UI** — consistent design system, no extra UI dependencies.
+- **Quick requests** — one-tap presets plus free-form requests with a note.
+- **Instant delivery** — requests appear in real time via Supabase Realtime.
+- **Status tracking** — every request moves through `PENDING → ACCEPTED → COMPLETED`.
+- **Replies** — the Server can send a short message back.
+- **Request history** with status filters.
+- **User accounts** — email/password auth (Supabase Auth).
+- **Families** — create a family, share a short invite code, everyone joins.
+- **Dark mode** — Auto / Light / Dark.
+- **Installable** — "Add to Home Screen" works on iOS & Android.
 
-## Architecture
+## Deploying to GitHub Pages
+
+The database is already set up on Supabase and the app is already pointed at it,
+so deployment is just two one-time settings:
+
+1. **Enable Pages**: repo **Settings → Pages → Build and deployment → Source →
+   GitHub Actions**.
+2. **Push to the deploy branch.** The workflow in
+   `.github/workflows/deploy-pages.yml` builds the web app and publishes it.
+   It runs automatically on pushes to `main` / the feature branch, or you can
+   trigger it manually from the **Actions** tab.
+
+Your app will be live at:
 
 ```
-┌─────────────────────┐         REST (JWT)          ┌──────────────────────┐
-│   Expo mobile app   │  ─────────────────────────► │   Express backend    │
-│  (iOS / Android)    │  ◄───────────────────────── │                      │
-│                     │      Socket.io (realtime)    │  Prisma → SQLite     │
-│                     │  ◄───────────────────────── │  Expo push service   │
-└─────────────────────┘      Push notifications      └──────────────────────┘
+https://<your-github-username>.github.io/<repo-name>/
 ```
 
-## Quick start
+### One recommended Supabase setting (for the smoothest signup)
 
-You need **Node.js 18+** and the **Expo Go** app on your phone (or a simulator).
+By default Supabase asks new users to confirm their email before logging in.
+For a frictionless family setup, turn that off:
 
-### 1. Backend
+- Supabase dashboard → **Authentication → Sign In / Providers → Email** →
+  disable **"Confirm email"**.
 
-```bash
-cd backend
-cp .env.example .env          # adjust JWT_SECRET for production
-npm install
-npm run db:push               # creates the SQLite database
-npm run dev                   # starts the API on http://localhost:4000
-```
+The app works either way — if confirmation stays on, after signing up users are
+told to confirm their email, then log in.
 
-### 2. Mobile
+## Try it out
+
+1. **Sign up** as a *Customer*, choose **Create family**, and note the invite
+   code shown in **Settings**.
+2. On another device, **sign up** as a *Server* and **Join family** with that
+   code.
+3. The Customer sends a request — the Server sees it instantly and can accept,
+   complete, and reply.
+
+## Local development
 
 ```bash
 cd mobile
 npm install
-# Point the app at your machine's LAN IP so your phone can reach the backend:
-#   EXPO_PUBLIC_API_URL=http://192.168.x.x:4000 npm start
-npm start
+npm run web        # opens the app in your browser
+# or: npm start    # for Expo Go on a phone / simulator
 ```
 
-Scan the QR code with Expo Go.
+See [`mobile/README.md`](mobile/README.md) for details and configuration.
 
-### Try it out
+## About push notifications
 
-1. On one device, **sign up** as a *Customer*, choose **Create a family**, and
-   note the invite code shown on the Home screen.
-2. On another device (or the same one), **sign up** as a *Server* and **Join a
-   family** using that invite code.
-3. The Customer sends a request — the Server gets it instantly and can accept,
-   complete, and reply.
-
-See [`backend/README.md`](backend/README.md) and
-[`mobile/README.md`](mobile/README.md) for details.
+True background push (waking a closed app) needs a native build and the Apple/
+Google developer accounts. For now the app delivers **instant in-app updates via
+realtime**, which covers the "Server sees the request immediately" experience
+while the app is open. Background push is wired up when you move to native builds.
 
 ## License
 

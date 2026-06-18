@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchRequests, getErrorMessage } from '../api/client';
 import { useSocket } from '../context/SocketContext';
 import { FamilyRequest } from '../types';
 
 /**
- * Loads the family's requests and keeps the list in sync in real time:
- * new requests are prepended, and updates replace the matching item.
+ * Loads the family's requests and keeps them in sync in real time. Any change
+ * to the family's requests (insert/update) triggers a lightweight refetch.
  */
 export function useRequests() {
   const { subscribe } = useSocket();
@@ -13,8 +13,11 @@ export function useRequests() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadingRef = useRef(false);
 
   const load = useCallback(async (isRefresh = false) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     if (isRefresh) setRefreshing(true);
     setError(null);
     try {
@@ -25,6 +28,7 @@ export function useRequests() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      loadingRef.current = false;
     }
   }, []);
 
@@ -32,24 +36,8 @@ export function useRequests() {
     load();
   }, [load]);
 
-  // Merge a single request from a socket event into local state.
-  const upsert = useCallback((incoming: FamilyRequest, prepend: boolean) => {
-    setRequests((prev) => {
-      const idx = prev.findIndex((r) => r.id === incoming.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = incoming;
-        return next;
-      }
-      return prepend ? [incoming, ...prev] : [...prev, incoming];
-    });
-  }, []);
-
-  useEffect(() => {
-    return subscribe((event, request) => {
-      upsert(request, event === 'request:created');
-    });
-  }, [subscribe, upsert]);
+  // Refetch whenever a realtime change arrives.
+  useEffect(() => subscribe(() => load()), [subscribe, load]);
 
   return {
     requests,

@@ -1,6 +1,4 @@
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '../config';
+import { supabase } from '../lib/supabase';
 import {
   AuthResponse,
   Family,
@@ -11,32 +9,49 @@ import {
   User,
 } from '../types';
 
-export const TOKEN_KEY = 'fr.token';
-
-export const api = axios.create({
-  baseURL: `${API_URL}/api`,
-  timeout: 15000,
-});
-
-// Attach the stored JWT to every request.
-api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem(TOKEN_KEY);
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-/** Normalize backend errors into a readable message. */
+/** Turn any Supabase/PostgREST error into a readable message. */
 export function getErrorMessage(err: unknown): string {
-  if (axios.isAxiosError(err)) {
-    const data = err.response?.data as { error?: string; details?: unknown } | undefined;
-    if (data?.error) return data.error;
-    if (err.code === 'ECONNABORTED') return 'Request timed out. Check your connection.';
-    if (!err.response) return 'Cannot reach the server. Is the backend running?';
-    return err.message;
+  if (err && typeof err === 'object' && 'message' in err) {
+    return String((err as { message: unknown }).message);
   }
   return 'Something went wrong';
+}
+
+// The columns we always select for a request, including the customer/server
+// names via the foreign-key relationships.
+const REQUEST_SELECT =
+  '*, customer:profiles!requests_customer_id_fkey(id,name), server:profiles!requests_server_id_fkey(id,name)';
+
+// Raw row shape returned by Supabase (snake_case).
+interface RequestRow {
+  id: string;
+  type: RequestType;
+  title: string;
+  note: string | null;
+  status: RequestStatus;
+  reply: string | null;
+  created_at: string;
+  accepted_at: string | null;
+  completed_at: string | null;
+  customer: { id: string; name: string } | null;
+  server: { id: string; name: string } | null;
+}
+
+/** Map a database row to the camelCase shape used throughout the UI. */
+export function mapRequest(row: RequestRow): FamilyRequest {
+  return {
+    id: row.id,
+    type: row.type,
+    title: row.title,
+    note: row.note,
+    status: row.status,
+    reply: row.reply,
+    createdAt: row.created_at,
+    acceptedAt: row.accepted_at,
+    completedAt: row.completed_at,
+    customer: row.customer,
+    server: row.server,
+  };
 }
 
 // ---- Auth ----
@@ -50,35 +65,97 @@ export interface SignupInput {
   inviteCode?: string;
 }
 
-export async function signup(input: SignupInput): Promise<AuthResponse> {
-  const { data } = await api.post<AuthResponse>('/auth/signup', input);
-  return data;
+/**
+ * Creates the account. A database trigger reads this metadata and creates (or
+ * joins) the family + profile atomically.
+ *
+ * Returns `{ needsConfirmation: true }` when the project still requires email
+ * confirmation (no session yet); otherwise the user is signed in immediately.
+ */
+export async function signup(
+  input: SignupInput,
+): Promise<{ needsConfirmation: boolean }> {
+  const { data, error } = await supabase.auth.signUp({
+    email: input.email.trim(),
+    password: input.password,
+    options: {
+      data: {
+        name: input.name.trim(),
+        role: input.role,
+        family_name: input.familyName?.trim() || null,
+        invite_code: input.inviteCode?.trim().toUpperCase() || null,
+      },
+    },
+  });
+  if (error) throw error;
+  return { needsConfirmation: !data.session };
 }
 
-export async function login(email: string, password: string): Promise<AuthResponse> {
-  const { data } = await api.post<AuthResponse>('/auth/login', { email, password });
-  return data;
+export async function login(email: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.signInWithPassword({
+    email: email.trim(),
+    password,
+  });
+  if (error) throw error;
 }
 
-export async function fetchMe(): Promise<User> {
-  const { data } = await api.get<{ user: User }>('/auth/me');
-  return data.user;
+export async function logout(): Promise<void> {
+  await supabase.auth.signOut();
+}
+
+/** Load the signed-in user's profile, or null if not set up yet. */
+export async function fetchMe(): Promise<User | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id,name,role,family_id')
+    .eq('id', auth.user.id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    name: data.name,
+    email: auth.user.email ?? '',
+    role: data.role as Role,
+    familyId: data.family_id,
+  };
 }
 
 // ---- Family ----
 
 export async function fetchFamily(): Promise<Family> {
-  const { data } = await api.get<Family>('/family/me');
-  return data;
+  const [{ data: fam, error: famErr }, { data: members, error: memErr }] = await Promise.all([
+    supabase.from('families').select('id,name,invite_code').single(),
+    supabase.from('profiles').select('id,name,role').order('created_at', { ascending: true }),
+  ]);
+  if (famErr) throw famErr;
+  if (memErr) throw memErr;
+  if (!fam) throw new Error('Family not found');
+
+  return {
+    id: fam.id,
+    name: fam.name,
+    inviteCode: fam.invite_code,
+    members: (members ?? []).map((m) => ({ id: m.id, name: m.name, role: m.role as Role })),
+  };
 }
 
 // ---- Requests ----
 
 export async function fetchRequests(status?: RequestStatus): Promise<FamilyRequest[]> {
-  const { data } = await api.get<FamilyRequest[]>('/requests', {
-    params: status ? { status } : undefined,
-  });
-  return data;
+  let query = supabase
+    .from('requests')
+    .select(REQUEST_SELECT)
+    .order('created_at', { ascending: false });
+  if (status) query = query.eq('status', status);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data as RequestRow[]).map(mapRequest);
 }
 
 export interface CreateRequestInput {
@@ -87,28 +164,29 @@ export interface CreateRequestInput {
   note?: string;
 }
 
-export async function createRequest(input: CreateRequestInput): Promise<FamilyRequest> {
-  const { data } = await api.post<FamilyRequest>('/requests', input);
-  return data;
+export async function createRequest(input: CreateRequestInput): Promise<void> {
+  const { error } = await supabase.rpc('create_request', {
+    p_type: input.type,
+    p_title: input.title ?? null,
+    p_note: input.note ?? null,
+  });
+  if (error) throw error;
 }
 
-export async function acceptRequest(id: string): Promise<FamilyRequest> {
-  const { data } = await api.post<FamilyRequest>(`/requests/${id}/accept`);
-  return data;
+export async function acceptRequest(id: string): Promise<void> {
+  const { error } = await supabase.rpc('accept_request', { p_id: id });
+  if (error) throw error;
 }
 
-export async function completeRequest(id: string, reply?: string): Promise<FamilyRequest> {
-  const { data } = await api.post<FamilyRequest>(`/requests/${id}/complete`, { reply });
-  return data;
+export async function completeRequest(id: string, reply?: string): Promise<void> {
+  const { error } = await supabase.rpc('complete_request', { p_id: id, p_reply: reply ?? null });
+  if (error) throw error;
 }
 
-export async function replyToRequest(id: string, reply: string): Promise<FamilyRequest> {
-  const { data } = await api.post<FamilyRequest>(`/requests/${id}/reply`, { reply });
-  return data;
+export async function replyToRequest(id: string, reply: string): Promise<void> {
+  const { error } = await supabase.rpc('reply_request', { p_id: id, p_reply: reply });
+  if (error) throw error;
 }
 
-// ---- Push ----
-
-export async function savePushToken(pushToken: string | null): Promise<void> {
-  await api.put('/users/push-token', { pushToken });
-}
+// Kept for API compatibility with the auth flow.
+export type { AuthResponse };

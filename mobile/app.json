@@ -24,9 +24,10 @@
         "backgroundColor": "#6C5CE7"
       }
     },
-    "plugins": ["expo-notifications"],
-    "extra": {
-      "apiUrl": "http://localhost:4000"
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png"
     }
   }
 }

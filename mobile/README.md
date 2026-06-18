@@ -1,57 +1,75 @@
-# Family Requests — Mobile
+# Family Requests — App
 
-Expo (React Native) + TypeScript app for iOS and Android.
+Expo (React Native + web) + TypeScript. The same codebase runs as a **web app**
+(deployed to GitHub Pages) and as a native iOS/Android app later.
 
-## Setup
+The backend is **Supabase** (Postgres + Auth + Realtime). The connection details
+live in `app.config.js` with working defaults, so the app runs out of the box.
+
+## Run locally
 
 ```bash
 npm install
-npm start
+npm run web        # browser
+npm start          # Expo Go (phone) / simulator — press w / i / a
 ```
 
-Then scan the QR code with **Expo Go**, or press `i` / `a` for a simulator.
-
-## Pointing at the backend
-
-On a real phone, `localhost` refers to the phone, not your computer — so set
-the backend URL to your machine's LAN IP:
+## Build the static web export
 
 ```bash
-EXPO_PUBLIC_API_URL=http://192.168.1.50:4000 npm start
+# "/" base path for local preview:
+npx expo export --platform web
+npx serve dist     # or any static file server
+
+# Subdirectory base path (as on GitHub Pages):
+EXPO_BASE_URL=/serve-that-boy- npx expo export --platform web
 ```
 
-Alternatively edit `extra.apiUrl` in `app.json`. The resolution order is:
+Deployment to GitHub Pages is automated by
+`.github/workflows/deploy-pages.yml` — see the root README.
 
-1. `EXPO_PUBLIC_API_URL` environment variable
-2. `extra.apiUrl` in `app.json`
-3. `http://localhost:4000`
+## Configuration
+
+Values resolve from environment variables first, then `app.config.js` defaults:
+
+| Variable                        | Purpose                                              |
+| ------------------------------- | ---------------------------------------------------- |
+| `EXPO_PUBLIC_SUPABASE_URL`      | Supabase project URL                                 |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/publishable key (public; RLS protects) |
+| `EXPO_BASE_URL`                 | Web base path (`/` locally, `/<repo>` on Pages)      |
+
+See `.env.example`. The anon key is **meant** to be public — Row Level Security
+on the database is what actually protects each family's data.
 
 ## Structure
 
 ```
 src/
-├── api/client.ts          Axios client + typed API calls
+├── lib/supabase.ts        Supabase client (auth storage, realtime)
+├── api/client.ts          Typed data layer: auth, family, requests (RPC + queries)
+├── context/
+│   ├── AuthContext.tsx     Supabase session + profile
+│   ├── ThemeContext.tsx    Dark mode (Auto / Light / Dark)
+│   └── SocketContext.tsx   Supabase Realtime subscription
+├── hooks/useRequests.ts   Live request list (fetch + refetch on realtime change)
 ├── components/            Reusable UI (Button, Card, RequestCard, …)
 ├── constants/presets.ts   The one-tap request presets
-├── context/              Auth, Theme (dark mode), Socket providers
-├── hooks/useRequests.ts   Live request list (REST + websocket)
 ├── navigation/           Role-aware bottom-tab navigator
 ├── screens/              Auth, Home (customer), Serve (server), History, Settings
 ├── theme/theme.ts         Light & dark design tokens
-├── notifications.ts       Expo push registration
 └── types/                Shared TypeScript types
 ```
 
-## Notes on push notifications
+## How auth + data work
 
-Push tokens only work on a **physical device** (not simulators). On launch the
-app requests permission and registers its Expo push token with the backend; the
-backend then sends notifications when requests are created/accepted/completed.
-For standalone (non-Expo-Go) builds you'll need an EAS `projectId` — see the
-[Expo docs](https://docs.expo.dev/push-notifications/overview/).
+- **Sign up** calls `supabase.auth.signUp` with the name/role and either a family
+  name (to create) or an invite code (to join). A Postgres trigger
+  (`handle_new_user`) creates the family + profile atomically.
+- **Requests** are created/accepted/completed/replied via SECURITY DEFINER RPC
+  functions that enforce roles server-side.
+- **Reads** are guarded by Row Level Security so each member only ever sees their
+  own family.
+- **Realtime** subscribes to changes on the `requests` table (scoped to the
+  family) and refetches, so both sides stay in sync instantly.
 
-## Assets
-
-The `assets/` folder ships tiny 1×1 PNG placeholders so the project runs out of
-the box. Replace `icon.png`, `splash.png`, and `adaptive-icon.png` with real
-artwork before publishing.
+The full database definition is in [`../supabase/schema.sql`](../supabase/schema.sql).

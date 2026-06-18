@@ -34,15 +34,17 @@ export function AuthScreen() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   const submit = async () => {
     setError(null);
+    setInfo(null);
     setLoading(true);
     try {
       if (mode === 'login') {
         await signIn(email.trim(), password);
       } else {
-        await register({
+        const { needsConfirmation } = await register({
           name: name.trim(),
           email: email.trim(),
           password,
@@ -50,6 +52,13 @@ export function AuthScreen() {
           familyName: familyMode === 'create' ? familyName.trim() : undefined,
           inviteCode: familyMode === 'join' ? inviteCode.trim().toUpperCase() : undefined,
         });
+        if (needsConfirmation) {
+          // Email confirmation is enabled on the project: prompt the user.
+          setMode('login');
+          setPassword('');
+          setInfo('Account created! Please confirm your email, then log in.');
+        }
+        // Otherwise onAuthStateChange signs the user in automatically.
       }
     } catch (err) {
       setError(getErrorMessage(err));
@@ -205,6 +214,9 @@ export function AuthScreen() {
 
           {error ? (
             <Text style={{ color: c.danger, marginBottom: 12, textAlign: 'center' }}>{error}</Text>
+          ) : null}
+          {info ? (
+            <Text style={{ color: c.success, marginBottom: 12, textAlign: 'center' }}>{info}</Text>
           ) : null}
 
           <Button
