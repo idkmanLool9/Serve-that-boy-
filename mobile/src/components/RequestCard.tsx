@@ -37,7 +37,7 @@ export function RequestCard({ request, onAccept, onComplete, onReply, busy }: Re
           ) : null}
 
           <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 6 }}>
-            {request.customer ? `From ${request.customer.name}` : 'From a family member'} ·{' '}
+            {request.customer ? `Van ${request.customer.name}` : 'Van een gezinslid'} ·{' '}
             {timeAgo(request.createdAt)}
             {request.server ? ` · ${request.server.name}` : ''}
           </Text>
@@ -52,7 +52,7 @@ export function RequestCard({ request, onAccept, onComplete, onReply, busy }: Re
               }}
             >
               <Text style={{ color: c.textMuted, fontSize: 12, marginBottom: 2 }}>
-                💬 {request.server?.name ?? 'Server'} replied
+                💬 {request.server?.name ?? 'Helper'} reageerde
               </Text>
               <Text style={{ color: c.text }}>{request.reply}</Text>
             </View>
@@ -63,11 +63,11 @@ export function RequestCard({ request, onAccept, onComplete, onReply, busy }: Re
       {isServer && request.status !== 'COMPLETED' ? (
         <View style={{ flexDirection: 'row', marginTop: theme.spacing(1.5), gap: 8 }}>
           {request.status === 'PENDING' && onAccept ? (
-            <Button title="Accept" variant="primary" onPress={() => onAccept(request)} disabled={busy} style={{ flex: 1 }} />
+            <Button title="Accepteren" variant="primary" onPress={() => onAccept(request)} disabled={busy} style={{ flex: 1 }} />
           ) : null}
           {onComplete ? (
             <Button
-              title="Complete"
+              title="Voltooien"
               variant="success"
               onPress={() => onComplete(request)}
               disabled={busy}
@@ -75,7 +75,7 @@ export function RequestCard({ request, onAccept, onComplete, onReply, busy }: Re
             />
           ) : null}
           {onReply ? (
-            <Button title="Reply" variant="secondary" onPress={() => onReply(request)} disabled={busy} style={{ flex: 1 }} />
+            <Button title="Antwoord" variant="secondary" onPress={() => onReply(request)} disabled={busy} style={{ flex: 1 }} />
           ) : null}
         </View>
       ) : null}

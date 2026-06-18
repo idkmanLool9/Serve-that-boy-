@@ -68,18 +68,18 @@ export function SetupScreen() {
         >
           <Text style={{ fontSize: 40, textAlign: 'center' }}>🏡</Text>
           <Text style={{ color: c.text, fontSize: 26, fontWeight: '800', textAlign: 'center', marginTop: 8 }}>
-            Finish setting up
+            Maak het account af
           </Text>
           <Text style={{ color: c.textMuted, textAlign: 'center', marginTop: 4, marginBottom: 24 }}>
-            Create a family or join one to get started.
+            Maak een gezin aan of word lid om te beginnen.
           </Text>
 
-          <TextField label="Your name" placeholder="e.g. Alex" value={name} onChangeText={setName} />
+          <TextField label="Je naam" placeholder="bijv. Alex" value={name} onChangeText={setName} />
 
-          <Text style={{ color: c.textMuted, marginBottom: 6, fontWeight: '600', fontSize: 13 }}>I am the…</Text>
+          <Text style={{ color: c.textMuted, marginBottom: 6, fontWeight: '600', fontSize: 13 }}>Ik ben de…</Text>
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-            <RoleChip label="🛎️ Customer" hint="I send requests" active={role === 'CUSTOMER'} onPress={() => setRole('CUSTOMER')} />
-            <RoleChip label="🏃 Server" hint="I help out" active={role === 'SERVER'} onPress={() => setRole('SERVER')} />
+            <RoleChip label="🛎️ Klant" hint="Ik stuur verzoeken" active={role === 'CUSTOMER'} onPress={() => setRole('CUSTOMER')} />
+            <RoleChip label="🏃 Helper" hint="Ik help mee" active={role === 'SERVER'} onPress={() => setRole('SERVER')} />
           </View>
 
           <View
@@ -91,15 +91,15 @@ export function SetupScreen() {
               marginBottom: 16,
             }}
           >
-            <Segment label="Create family" active={familyMode === 'create'} onPress={() => setFamilyMode('create')} />
-            <Segment label="Join family" active={familyMode === 'join'} onPress={() => setFamilyMode('join')} />
+            <Segment label="Gezin aanmaken" active={familyMode === 'create'} onPress={() => setFamilyMode('create')} />
+            <Segment label="Lid worden" active={familyMode === 'join'} onPress={() => setFamilyMode('join')} />
           </View>
 
           {familyMode === 'create' ? (
-            <TextField label="Family name" placeholder="The Smiths" value={familyName} onChangeText={setFamilyName} />
+            <TextField label="Gezinsnaam" placeholder="De familie Jansen" value={familyName} onChangeText={setFamilyName} />
           ) : (
             <TextField
-              label="Invite code"
+              label="Uitnodigingscode"
               placeholder="ABC123"
               value={inviteCode}
               onChangeText={setInviteCode}
@@ -110,8 +110,8 @@ export function SetupScreen() {
 
           {error ? <Text style={{ color: c.danger, marginBottom: 12, textAlign: 'center' }}>{error}</Text> : null}
 
-          <Button title="Continue" onPress={submit} loading={loading} />
-          <Button title="Log out" variant="ghost" onPress={signOut} style={{ marginTop: 10 }} />
+          <Button title="Doorgaan" onPress={submit} loading={loading} />
+          <Button title="Uitloggen" variant="ghost" onPress={signOut} style={{ marginTop: 10 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

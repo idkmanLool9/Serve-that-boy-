@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, Text, View } from 'react-native';
+import { FlatList, RefreshControl, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useRequests } from '../hooks/useRequests';
@@ -13,6 +13,7 @@ import { FamilyRequest } from '../types';
 import { RequestCard } from '../components/RequestCard';
 import { ReplyModal } from '../components/ReplyModal';
 import { EmptyState } from '../components/ui';
+import { notify } from '../utils/alert';
 
 type ModalKind = 'complete' | 'reply';
 
@@ -39,8 +40,9 @@ export function ServeScreen() {
     setBusyId(id);
     try {
       await fn();
+      await refresh();
     } catch (err) {
-      Alert.alert('Action failed', getErrorMessage(err));
+      notify('Actie mislukt', getErrorMessage(err));
     } finally {
       setBusyId(null);
     }
@@ -58,8 +60,9 @@ export function ServeScreen() {
         await replyToRequest(modal.request.id, message);
       }
       setModal(null);
+      await refresh();
     } catch (err) {
-      Alert.alert('Action failed', getErrorMessage(err));
+      notify('Actie mislukt', getErrorMessage(err));
     } finally {
       setModalLoading(false);
     }
@@ -68,9 +71,9 @@ export function ServeScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.background }} edges={['top']}>
       <View style={{ padding: theme.spacing(2), paddingBottom: 0 }}>
-        <Text style={{ color: c.text, fontSize: 26, fontWeight: '800' }}>Incoming requests</Text>
+        <Text style={{ color: c.text, fontSize: 26, fontWeight: '800' }}>Binnenkomende verzoeken</Text>
         <Text style={{ color: c.textMuted, marginTop: 2 }}>
-          {open.length === 0 ? 'All caught up' : `${open.length} waiting`}
+          {open.length === 0 ? 'Helemaal bij' : `${open.length} wachtend`}
         </Text>
       </View>
 
@@ -94,8 +97,8 @@ export function ServeScreen() {
           loading ? null : (
             <EmptyState
               icon="🎉"
-              title="Nothing to do"
-              subtitle="New requests from your family will appear here instantly."
+              title="Niets te doen"
+              subtitle="Nieuwe verzoeken van je gezin verschijnen hier direct."
             />
           )
         }
@@ -103,10 +106,10 @@ export function ServeScreen() {
 
       <ReplyModal
         visible={modal !== null}
-        title={modal?.kind === 'complete' ? 'Complete request' : 'Send a reply'}
-        confirmLabel={modal?.kind === 'complete' ? 'Mark completed' : 'Send'}
+        title={modal?.kind === 'complete' ? 'Verzoek voltooien' : 'Antwoord sturen'}
+        confirmLabel={modal?.kind === 'complete' ? 'Markeer als voltooid' : 'Versturen'}
         placeholder={
-          modal?.kind === 'complete' ? 'Add a reply (optional)…' : 'Type a short message…'
+          modal?.kind === 'complete' ? 'Voeg een antwoord toe (optioneel)…' : 'Typ een kort bericht…'
         }
         optional={modal?.kind === 'complete'}
         loading={modalLoading}

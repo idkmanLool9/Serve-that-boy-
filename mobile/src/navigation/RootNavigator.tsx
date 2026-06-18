@@ -58,7 +58,7 @@ function MainTabs() {
           name="Home"
           component={HomeScreen}
           options={{
-            tabBarLabel: 'Request',
+            tabBarLabel: 'Verzoek',
             tabBarIcon: ({ focused, color }) => <TabIcon emoji="🛎️" focused={focused} color={color} />,
           }}
         />
@@ -67,7 +67,7 @@ function MainTabs() {
           name="Serve"
           component={ServeScreen}
           options={{
-            tabBarLabel: 'Serve',
+            tabBarLabel: 'Helpen',
             tabBarIcon: ({ focused, color }) => <TabIcon emoji="🏃" focused={focused} color={color} />,
           }}
         />
@@ -76,6 +76,7 @@ function MainTabs() {
         name="History"
         component={HistoryScreen}
         options={{
+          tabBarLabel: 'Geschiedenis',
           tabBarIcon: ({ focused, color }) => <TabIcon emoji="🗂️" focused={focused} color={color} />,
         }}
       />
@@ -83,6 +84,7 @@ function MainTabs() {
         name="Settings"
         component={SettingsScreen}
         options={{
+          tabBarLabel: 'Instellingen',
           tabBarIcon: ({ focused, color }) => <TabIcon emoji="⚙️" focused={focused} color={color} />,
         }}
       />

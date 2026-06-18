@@ -8,10 +8,10 @@ export interface Preset {
 
 // The one-tap requests a Customer can send.
 export const PRESETS: Preset[] = [
-  { type: 'item', title: 'Bring me an item', icon: '📦' },
-  { type: 'ice_cream', title: 'Get me an ice cream', icon: '🍦' },
-  { type: 'clothes', title: 'Bring my clothes downstairs', icon: '🧺' },
-  { type: 'help', title: 'Help me with something', icon: '🙋' },
+  { type: 'item', title: 'Breng iets voor me', icon: '📦' },
+  { type: 'ice_cream', title: 'Haal een ijsje voor me', icon: '🍦' },
+  { type: 'clothes', title: 'Breng mijn kleren naar beneden', icon: '🧺' },
+  { type: 'help', title: 'Help me met iets', icon: '🙋' },
 ];
 
 const ICON_BY_TYPE: Record<RequestType, string> = {

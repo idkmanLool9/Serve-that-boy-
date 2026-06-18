@@ -18,7 +18,7 @@ interface ReplyModalProps {
 export function ReplyModal({
   visible,
   title,
-  placeholder = 'Type a short message…',
+  placeholder = 'Typ een kort bericht…',
   confirmLabel,
   optional,
   loading,

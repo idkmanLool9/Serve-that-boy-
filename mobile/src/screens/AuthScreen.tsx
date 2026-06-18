@@ -53,17 +53,15 @@ export function AuthScreen() {
           inviteCode: familyMode === 'join' ? inviteCode.trim().toUpperCase() : undefined,
         });
         if (needsConfirmation) {
-          // New users are auto-confirmed server-side, so signing in works
-          // immediately. Fall back to a prompt only if that somehow fails.
+          // Nieuwe gebruikers worden automatisch bevestigd, dus direct inloggen werkt.
           try {
             await signIn(email.trim(), password);
           } catch {
             setMode('login');
             setPassword('');
-            setInfo('Account created! Please log in to continue.');
+            setInfo('Account aangemaakt! Log in om verder te gaan.');
           }
         }
-        // Otherwise onAuthStateChange signs the user in automatically.
       }
     } catch (err) {
       setError(getErrorMessage(err));
@@ -115,13 +113,13 @@ export function AuthScreen() {
               marginTop: 8,
             }}
           >
-            Family Requests
+            Familieverzoeken
           </Text>
           <Text style={{ color: c.textMuted, textAlign: 'center', marginTop: 4, marginBottom: 24 }}>
-            Quick requests for the people you live with
+            Snelle verzoeken voor je huisgenoten
           </Text>
 
-          {/* Login / Sign up switch */}
+          {/* Inloggen / Registreren */}
           <View
             style={{
               flexDirection: 'row',
@@ -131,17 +129,17 @@ export function AuthScreen() {
               marginBottom: 20,
             }}
           >
-            <Segment label="Log in" active={mode === 'login'} onPress={() => setMode('login')} />
-            <Segment label="Sign up" active={mode === 'signup'} onPress={() => setMode('signup')} />
+            <Segment label="Inloggen" active={mode === 'login'} onPress={() => setMode('login')} />
+            <Segment label="Registreren" active={mode === 'signup'} onPress={() => setMode('signup')} />
           </View>
 
           {mode === 'signup' ? (
-            <TextField label="Your name" placeholder="e.g. Alex" value={name} onChangeText={setName} />
+            <TextField label="Je naam" placeholder="bijv. Alex" value={name} onChangeText={setName} />
           ) : null}
 
           <TextField
-            label="Email"
-            placeholder="you@example.com"
+            label="E-mail"
+            placeholder="jij@voorbeeld.nl"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -149,7 +147,7 @@ export function AuthScreen() {
             autoCorrect={false}
           />
           <TextField
-            label="Password"
+            label="Wachtwoord"
             placeholder="••••••••"
             value={password}
             onChangeText={setPassword}
@@ -159,18 +157,18 @@ export function AuthScreen() {
           {mode === 'signup' ? (
             <>
               <Text style={{ color: c.textMuted, marginBottom: 6, fontWeight: '600', fontSize: 13 }}>
-                I am the…
+                Ik ben de…
               </Text>
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                 <RoleChip
-                  label="🛎️ Customer"
-                  hint="I send requests"
+                  label="🛎️ Klant"
+                  hint="Ik stuur verzoeken"
                   active={role === 'CUSTOMER'}
                   onPress={() => setRole('CUSTOMER')}
                 />
                 <RoleChip
-                  label="🏃 Server"
-                  hint="I help out"
+                  label="🏃 Helper"
+                  hint="Ik help mee"
                   active={role === 'SERVER'}
                   onPress={() => setRole('SERVER')}
                 />
@@ -186,12 +184,12 @@ export function AuthScreen() {
                 }}
               >
                 <Segment
-                  label="Create family"
+                  label="Gezin aanmaken"
                   active={familyMode === 'create'}
                   onPress={() => setFamilyMode('create')}
                 />
                 <Segment
-                  label="Join family"
+                  label="Lid worden"
                   active={familyMode === 'join'}
                   onPress={() => setFamilyMode('join')}
                 />
@@ -199,14 +197,14 @@ export function AuthScreen() {
 
               {familyMode === 'create' ? (
                 <TextField
-                  label="Family name"
-                  placeholder="The Smiths"
+                  label="Gezinsnaam"
+                  placeholder="De familie Jansen"
                   value={familyName}
                   onChangeText={setFamilyName}
                 />
               ) : (
                 <TextField
-                  label="Invite code"
+                  label="Uitnodigingscode"
                   placeholder="ABC123"
                   value={inviteCode}
                   onChangeText={setInviteCode}
@@ -225,7 +223,7 @@ export function AuthScreen() {
           ) : null}
 
           <Button
-            title={mode === 'login' ? 'Log in' : 'Create account'}
+            title={mode === 'login' ? 'Inloggen' : 'Account aanmaken'}
             onPress={submit}
             loading={loading}
           />

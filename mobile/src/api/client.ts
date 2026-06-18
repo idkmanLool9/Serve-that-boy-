@@ -9,12 +9,25 @@ import {
   User,
 } from '../types';
 
-/** Turn any Supabase/PostgREST error into a readable message. */
+// Map common English Supabase/Auth messages to Dutch.
+const DUTCH_MESSAGES: Record<string, string> = {
+  'Invalid login credentials': 'Onjuist e-mailadres of wachtwoord',
+  'Email not confirmed': 'E-mailadres is nog niet bevestigd',
+  'User already registered': 'Er bestaat al een account met dit e-mailadres',
+  'Password should be at least 6 characters': 'Wachtwoord moet minstens 6 tekens zijn',
+  'Unable to validate email address: invalid format': 'Ongeldig e-mailadres',
+  'Anonymous sign-ins are disabled': 'Anoniem inloggen is uitgeschakeld',
+  'Failed to fetch': 'Kan de server niet bereiken. Controleer je internetverbinding.',
+  'Network request failed': 'Kan de server niet bereiken. Controleer je internetverbinding.',
+};
+
+/** Turn any Supabase/PostgREST error into a readable Dutch message. */
 export function getErrorMessage(err: unknown): string {
   if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: unknown }).message);
+    const msg = String((err as { message: unknown }).message);
+    return DUTCH_MESSAGES[msg] ?? msg;
   }
-  return 'Something went wrong';
+  return 'Er ging iets mis';
 }
 
 // The columns we always select for a request, including the customer/server

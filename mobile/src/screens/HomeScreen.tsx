@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useRequests } from '../hooks/useRequests';
 import { createRequest, getErrorMessage } from '../api/client';
+import { notify } from '../utils/alert';
 import { PRESETS, Preset } from '../constants/presets';
 import { RequestType } from '../types';
 import { RequestCard } from '../components/RequestCard';
@@ -32,8 +33,10 @@ export function HomeScreen() {
       await createRequest({ type, title, note: note.trim() || undefined });
       setNote('');
       if (type === 'custom') setCustomTitle('');
+      // Refresh right away so the request shows up even if realtime is slow.
+      await refresh();
     } catch (err) {
-      Alert.alert('Could not send', getErrorMessage(err));
+      notify('Versturen mislukt', getErrorMessage(err));
     } finally {
       setSending(null);
     }
@@ -41,9 +44,9 @@ export function HomeScreen() {
 
   const header = (
     <View>
-      <Text style={{ color: c.textMuted, fontSize: 15 }}>Hi {user?.name} 👋</Text>
+      <Text style={{ color: c.textMuted, fontSize: 15 }}>Hoi {user?.name} 👋</Text>
       <Text style={{ color: c.text, fontSize: 26, fontWeight: '800', marginBottom: theme.spacing(2) }}>
-        What do you need?
+        Wat heb je nodig?
       </Text>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
@@ -69,21 +72,21 @@ export function HomeScreen() {
       </View>
 
       <Card style={{ marginTop: theme.spacing(2) }}>
-        <Text style={{ color: c.text, fontWeight: '700', marginBottom: 10 }}>Custom request</Text>
+        <Text style={{ color: c.text, fontWeight: '700', marginBottom: 10 }}>Eigen verzoek</Text>
         <TextField
-          placeholder="What do you need?"
+          placeholder="Wat heb je nodig?"
           value={customTitle}
           onChangeText={setCustomTitle}
         />
         <TextField
-          placeholder="Add a note (optional)"
+          placeholder="Voeg een notitie toe (optioneel)"
           value={note}
           onChangeText={setNote}
           multiline
           style={{ minHeight: 60, textAlignVertical: 'top' }}
         />
         <Button
-          title="Send request"
+          title="Verzoek versturen"
           onPress={() => send('custom', customTitle.trim())}
           loading={sending === 'custom'}
           disabled={customTitle.trim().length === 0}
@@ -99,7 +102,7 @@ export function HomeScreen() {
           marginBottom: theme.spacing(1),
         }}
       >
-        Your active requests
+        Je actieve verzoeken
       </Text>
     </View>
   );
@@ -119,8 +122,8 @@ export function HomeScreen() {
           loading ? null : (
             <EmptyState
               icon="✅"
-              title="No active requests"
-              subtitle="Tap a card above to ask someone for help."
+              title="Geen actieve verzoeken"
+              subtitle="Tik op een kaart hierboven om iemand om hulp te vragen."
             />
           )
         }

@@ -1,12 +1,12 @@
 {
-  "name": "Family Requests",
-  "short_name": "Requests",
-  "description": "Send quick requests to your family and get them done.",
+  "name": "Familieverzoeken",
+  "short_name": "Verzoeken",
+  "description": "Stuur snelle verzoeken naar je gezin en krijg ze gedaan.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
-  "background_color": "#6C5CE7",
-  "theme_color": "#6C5CE7",
+  "background_color": "#E8590C",
+  "theme_color": "#E8590C",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }

@@ -25,6 +25,32 @@ export interface Theme {
 const spacing = (n: number) => n * 8;
 const radius = { sm: 8, md: 14, lg: 22, pill: 999 };
 
+// Selectable accent colors (the "primary" color). Labels are in Dutch.
+export interface AccentOption {
+  key: string;
+  label: string;
+  light: string;
+  dark: string;
+}
+
+export const ACCENTS: AccentOption[] = [
+  { key: 'orange', label: 'Oranje', light: '#E8590C', dark: '#FB923C' },
+  { key: 'blue', label: 'Blauw', light: '#2563EB', dark: '#60A5FA' },
+  { key: 'green', label: 'Groen', light: '#16A34A', dark: '#34D399' },
+  { key: 'red', label: 'Rood', light: '#DC2626', dark: '#F87171' },
+  { key: 'purple', label: 'Paars', light: '#6C5CE7', dark: '#8B7BFF' },
+  { key: 'pink', label: 'Roze', light: '#DB2777', dark: '#F472B6' },
+  { key: 'teal', label: 'Turquoise', light: '#0D9488', dark: '#2DD4BF' },
+  { key: 'indigo', label: 'Indigo', light: '#4F46E5', dark: '#818CF8' },
+];
+
+export const DEFAULT_ACCENT = 'orange';
+
+export function accentFor(key: string, mode: 'light' | 'dark'): string {
+  const accent = ACCENTS.find((a) => a.key === key) ?? ACCENTS[0];
+  return mode === 'dark' ? accent.dark : accent.light;
+}
+
 export const lightTheme: Theme = {
   mode: 'light',
   spacing,

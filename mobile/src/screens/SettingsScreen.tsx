@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSocket } from '../context/SocketContext';
 import { fetchFamily, getErrorMessage } from '../api/client';
+import { accentFor } from '../theme/theme';
 import { Family } from '../types';
 import { Button, Card } from '../components/ui';
+import { confirmAction, notify } from '../utils/alert';
 
 export function SettingsScreen() {
-  const { theme, preference, setPreference } = useTheme();
+  const { theme, preference, setPreference, accent, setAccent, accents } = useTheme();
   const c = theme.colors;
   const { user, signOut } = useAuth();
   const { connected } = useSocket();
@@ -25,20 +27,28 @@ export function SettingsScreen() {
 
   const shareInvite = async () => {
     if (!family) return;
+    const message = `Doe mee met ons gezin in Familieverzoeken! Gebruik uitnodigingscode: ${family.inviteCode}`;
     try {
-      await Share.share({
-        message: `Join our family on Family Requests! Use invite code: ${family.inviteCode}`,
-      });
+      // Share is not available on web — fall back to a copyable message.
+      if (typeof (Share as { share?: unknown }).share === 'function') {
+        await Share.share({ message });
+      } else {
+        notify('Uitnodigingscode', message);
+      }
     } catch {
-      // user cancelled — ignore
+      notify('Uitnodigingscode', message);
     }
   };
 
   const confirmSignOut = () => {
-    Alert.alert('Log out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log out', style: 'destructive', onPress: () => signOut() },
-    ]);
+    confirmAction({
+      title: 'Uitloggen',
+      message: 'Weet je zeker dat je wilt uitloggen?',
+      confirmLabel: 'Uitloggen',
+      cancelLabel: 'Annuleren',
+      destructive: true,
+      onConfirm: () => signOut(),
+    });
   };
 
   const sectionTitle = (t: string) => (
@@ -60,7 +70,7 @@ export function SettingsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.background }} edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: theme.spacing(2) }}>
-        <Text style={{ color: c.text, fontSize: 26, fontWeight: '800' }}>Settings</Text>
+        <Text style={{ color: c.text, fontSize: 26, fontWeight: '800' }}>Instellingen</Text>
 
         {sectionTitle('Account')}
         <Card>
@@ -77,17 +87,17 @@ export function SettingsScreen() {
             }}
           >
             <Text style={{ color: c.primary, fontWeight: '700', fontSize: 12 }}>
-              {user?.role === 'CUSTOMER' ? '🛎️ Customer' : '🏃 Server'}
+              {user?.role === 'CUSTOMER' ? '🛎️ Klant' : '🏃 Helper'}
             </Text>
           </View>
         </Card>
 
-        {sectionTitle('Family')}
+        {sectionTitle('Gezin')}
         {error ? <Text style={{ color: c.danger }}>{error}</Text> : null}
         {family ? (
           <Card>
             <Text style={{ color: c.text, fontWeight: '700', fontSize: 16 }}>{family.name}</Text>
-            <Text style={{ color: c.textMuted, marginTop: 8, fontSize: 13 }}>Invite code</Text>
+            <Text style={{ color: c.textMuted, marginTop: 8, fontSize: 13 }}>Uitnodigingscode</Text>
             <Text
               style={{
                 color: c.primary,
@@ -99,10 +109,10 @@ export function SettingsScreen() {
             >
               {family.inviteCode}
             </Text>
-            <Button title="Share invite" variant="secondary" onPress={shareInvite} />
+            <Button title="Uitnodiging delen" variant="secondary" onPress={shareInvite} />
 
             <Text style={{ color: c.textMuted, marginTop: theme.spacing(2), fontSize: 13 }}>
-              Members ({family.members.length})
+              Leden ({family.members.length})
             </Text>
             {family.members.map((m) => (
               <View
@@ -111,15 +121,16 @@ export function SettingsScreen() {
               >
                 <Text style={{ color: c.text }}>{m.name}</Text>
                 <Text style={{ color: c.textMuted }}>
-                  {m.role === 'CUSTOMER' ? '🛎️ Customer' : '🏃 Server'}
+                  {m.role === 'CUSTOMER' ? '🛎️ Klant' : '🏃 Helper'}
                 </Text>
               </View>
             ))}
           </Card>
         ) : null}
 
-        {sectionTitle('Appearance')}
+        {sectionTitle('Weergave')}
         <Card>
+          <Text style={{ color: c.textMuted, fontSize: 13, marginBottom: 8 }}>Thema</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {(['system', 'light', 'dark'] as const).map((opt) => {
               const active = preference === opt;
@@ -136,8 +147,37 @@ export function SettingsScreen() {
                   }}
                 >
                   <Text style={{ color: active ? c.primaryText : c.text, fontWeight: '700' }}>
-                    {opt === 'system' ? 'Auto' : opt === 'light' ? 'Light' : 'Dark'}
+                    {opt === 'system' ? 'Auto' : opt === 'light' ? 'Licht' : 'Donker'}
                   </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={{ color: c.textMuted, fontSize: 13, marginTop: theme.spacing(2), marginBottom: 10 }}>
+            Accentkleur
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
+            {accents.map((a) => {
+              const color = accentFor(a.key, theme.mode);
+              const active = accent === a.key;
+              return (
+                <Pressable key={a.key} onPress={() => setAccent(a.key)} style={{ alignItems: 'center', width: 56 }}>
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 22,
+                      backgroundColor: color,
+                      borderWidth: active ? 3 : 0,
+                      borderColor: c.text,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {active ? <Text style={{ color: '#fff', fontWeight: '900', fontSize: 18 }}>✓</Text> : null}
+                  </View>
+                  <Text style={{ color: c.textMuted, fontSize: 11, marginTop: 4 }}>{a.label}</Text>
                 </Pressable>
               );
             })}
@@ -157,13 +197,13 @@ export function SettingsScreen() {
               }}
             />
             <Text style={{ color: c.text }}>
-              {connected ? 'Connected — live updates on' : 'Reconnecting…'}
+              {connected ? 'Verbonden — live updates aan' : 'Opnieuw verbinden…'}
             </Text>
           </View>
         </Card>
 
         <View style={{ marginTop: theme.spacing(3) }}>
-          <Button title="Log out" variant="danger" onPress={confirmSignOut} />
+          <Button title="Uitloggen" variant="danger" onPress={confirmSignOut} />
         </View>
       </ScrollView>
     </SafeAreaView>

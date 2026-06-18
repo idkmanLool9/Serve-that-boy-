@@ -10,10 +10,10 @@ import { EmptyState } from '../components/ui';
 type Filter = 'ALL' | RequestStatus;
 
 const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'ALL', label: 'All' },
-  { key: 'PENDING', label: 'Pending' },
-  { key: 'ACCEPTED', label: 'Accepted' },
-  { key: 'COMPLETED', label: 'Completed' },
+  { key: 'ALL', label: 'Alles' },
+  { key: 'PENDING', label: 'In afwachting' },
+  { key: 'ACCEPTED', label: 'Geaccepteerd' },
+  { key: 'COMPLETED', label: 'Voltooid' },
 ];
 
 export function HistoryScreen() {
@@ -30,7 +30,7 @@ export function HistoryScreen() {
   const header = (
     <View style={{ marginBottom: theme.spacing(1) }}>
       <Text style={{ color: c.text, fontSize: 26, fontWeight: '800', marginBottom: theme.spacing(1.5) }}>
-        History
+        Geschiedenis
       </Text>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {FILTERS.map((f) => {
@@ -71,7 +71,7 @@ export function HistoryScreen() {
         }
         ListEmptyComponent={
           loading ? null : (
-            <EmptyState icon="🗂️" title="No requests yet" subtitle="Requests will show up here." />
+            <EmptyState icon="🗂️" title="Nog geen verzoeken" subtitle="Verzoeken verschijnen hier." />
           )
         }
       />

@@ -150,9 +150,9 @@ export function TextField({ label, containerStyle, style, ...rest }: TextFieldPr
 // ---- StatusBadge ----
 
 const STATUS_LABEL: Record<RequestStatus, string> = {
-  PENDING: 'Pending',
-  ACCEPTED: 'Accepted',
-  COMPLETED: 'Completed',
+  PENDING: 'In afwachting',
+  ACCEPTED: 'Geaccepteerd',
+  COMPLETED: 'Voltooid',
 };
 
 export function StatusBadge({ status }: { status: RequestStatus }) {

@@ -109,10 +109,10 @@ begin
   elsif coalesce(trim(v_invite),'') <> '' then
     select id into v_family_id from families where invite_code = upper(trim(v_invite));
     if v_family_id is null then
-      raise exception 'No family found with that invite code';
+      raise exception 'Geen gezin gevonden met die uitnodigingscode';
     end if;
   else
-    raise exception 'A family name or invite code is required';
+    raise exception 'Een gezinsnaam of uitnodigingscode is verplicht';
   end if;
 
   insert into profiles(id, name, role, family_id) values (new.id, v_name, v_role, v_family_id);
@@ -153,17 +153,17 @@ returns public.requests language plpgsql security definer set search_path = publ
 declare v_p profiles; v_title text; v_row requests;
 begin
   select * into v_p from profiles where id = auth.uid();
-  if v_p.id is null then raise exception 'No profile found'; end if;
-  if v_p.role <> 'CUSTOMER' then raise exception 'Only customers can create requests'; end if;
-  if p_type not in ('item','ice_cream','clothes','help','custom') then raise exception 'Invalid request type'; end if;
+  if v_p.id is null then raise exception 'Geen profiel gevonden'; end if;
+  if v_p.role <> 'CUSTOMER' then raise exception 'Alleen klanten kunnen verzoeken aanmaken'; end if;
+  if p_type not in ('item','ice_cream','clothes','help','custom') then raise exception 'Ongeldig verzoektype'; end if;
 
   v_title := coalesce(nullif(trim(p_title),''), case p_type
-    when 'item'      then 'Bring me an item'
-    when 'ice_cream' then 'Get me an ice cream'
-    when 'clothes'   then 'Bring my clothes downstairs'
-    when 'help'      then 'Help me with something'
+    when 'item'      then 'Breng iets voor me'
+    when 'ice_cream' then 'Haal een ijsje voor me'
+    when 'clothes'   then 'Breng mijn kleren naar beneden'
+    when 'help'      then 'Help me met iets'
     else null end);
-  if v_title is null then raise exception 'A title is required for custom requests'; end if;
+  if v_title is null then raise exception 'Een titel is verplicht voor eigen verzoeken'; end if;
 
   insert into requests(family_id, customer_id, type, title, note)
     values (v_p.family_id, v_p.id, p_type, v_title, nullif(trim(p_note),''))
@@ -177,10 +177,10 @@ returns public.requests language plpgsql security definer set search_path = publ
 declare v_p profiles; v_row requests;
 begin
   select * into v_p from profiles where id = auth.uid();
-  if v_p.role <> 'SERVER' then raise exception 'Only servers can accept requests'; end if;
+  if v_p.role <> 'SERVER' then raise exception 'Alleen helpers kunnen verzoeken accepteren'; end if;
   select * into v_row from requests where id = p_id;
-  if v_row.id is null or v_row.family_id <> v_p.family_id then raise exception 'Request not found'; end if;
-  if v_row.status <> 'PENDING' then raise exception 'Only pending requests can be accepted'; end if;
+  if v_row.id is null or v_row.family_id <> v_p.family_id then raise exception 'Verzoek niet gevonden'; end if;
+  if v_row.status <> 'PENDING' then raise exception 'Alleen wachtende verzoeken kunnen worden geaccepteerd'; end if;
   update requests set status='ACCEPTED', server_id=v_p.id, accepted_at=now()
     where id=p_id returning * into v_row;
   return v_row;
@@ -192,10 +192,10 @@ returns public.requests language plpgsql security definer set search_path = publ
 declare v_p profiles; v_row requests;
 begin
   select * into v_p from profiles where id = auth.uid();
-  if v_p.role <> 'SERVER' then raise exception 'Only servers can complete requests'; end if;
+  if v_p.role <> 'SERVER' then raise exception 'Alleen helpers kunnen verzoeken voltooien'; end if;
   select * into v_row from requests where id = p_id;
-  if v_row.id is null or v_row.family_id <> v_p.family_id then raise exception 'Request not found'; end if;
-  if v_row.status = 'COMPLETED' then raise exception 'Request is already completed'; end if;
+  if v_row.id is null or v_row.family_id <> v_p.family_id then raise exception 'Verzoek niet gevonden'; end if;
+  if v_row.status = 'COMPLETED' then raise exception 'Verzoek is al voltooid'; end if;
   update requests set
     status='COMPLETED',
     completed_at=now(),
@@ -212,10 +212,10 @@ returns public.requests language plpgsql security definer set search_path = publ
 declare v_p profiles; v_row requests;
 begin
   select * into v_p from profiles where id = auth.uid();
-  if v_p.role <> 'SERVER' then raise exception 'Only servers can reply'; end if;
-  if coalesce(trim(p_reply),'') = '' then raise exception 'Reply cannot be empty'; end if;
+  if v_p.role <> 'SERVER' then raise exception 'Alleen helpers kunnen reageren'; end if;
+  if coalesce(trim(p_reply),'') = '' then raise exception 'Antwoord mag niet leeg zijn'; end if;
   select * into v_row from requests where id = p_id;
-  if v_row.id is null or v_row.family_id <> v_p.family_id then raise exception 'Request not found'; end if;
+  if v_row.id is null or v_row.family_id <> v_p.family_id then raise exception 'Verzoek niet gevonden'; end if;
   update requests set reply=trim(p_reply) where id=p_id returning * into v_row;
   return v_row;
 end;
@@ -228,10 +228,10 @@ create or replace function public.setup_account(
 ) returns json language plpgsql security definer set search_path = public as $$
 declare v_family_id uuid; v_code text; v_alphabet text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; i int;
 begin
-  if auth.uid() is null then raise exception 'Not authenticated'; end if;
-  if exists (select 1 from profiles where id = auth.uid()) then raise exception 'Account is already set up'; end if;
-  if coalesce(trim(p_name),'') = '' then raise exception 'Name is required'; end if;
-  if p_role not in ('CUSTOMER','SERVER') then raise exception 'Please choose a role'; end if;
+  if auth.uid() is null then raise exception 'Niet ingelogd'; end if;
+  if exists (select 1 from profiles where id = auth.uid()) then raise exception 'Account is al ingesteld'; end if;
+  if coalesce(trim(p_name),'') = '' then raise exception 'Naam is verplicht'; end if;
+  if p_role not in ('CUSTOMER','SERVER') then raise exception 'Kies een rol'; end if;
 
   if coalesce(trim(p_family_name),'') <> '' then
     loop
@@ -244,9 +244,9 @@ begin
     insert into families(name, invite_code) values (trim(p_family_name), v_code) returning id into v_family_id;
   elsif coalesce(trim(p_invite_code),'') <> '' then
     select id into v_family_id from families where invite_code = upper(trim(p_invite_code));
-    if v_family_id is null then raise exception 'No family found with that invite code'; end if;
+    if v_family_id is null then raise exception 'Geen gezin gevonden met die uitnodigingscode'; end if;
   else
-    raise exception 'Provide a family name or invite code';
+    raise exception 'Geef een gezinsnaam of uitnodigingscode op';
   end if;
 
   insert into profiles(id, name, role, family_id) values (auth.uid(), trim(p_name), p_role, v_family_id);

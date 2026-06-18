@@ -64,7 +64,7 @@ jobs:
           # Prevent GitHub Pages (Jekyll) from ignoring the _expo/ directory.
           touch dist/.nojekyll
         env:
-          PWA_TAGS: '<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#6C5CE7"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Family Requests"><link rel="apple-touch-icon" href="icon-192.png">'
+          PWA_TAGS: '<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#E8590C"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Familieverzoeken"><link rel="apple-touch-icon" href="icon-192.png">'
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
