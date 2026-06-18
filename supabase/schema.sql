@@ -125,6 +125,27 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- ---------- Auto-confirm email on signup ----------
+-- Families shouldn't need to verify email. This confirms new users at insert
+-- time (equivalent to Supabase's "Confirm email = off"). You can alternatively
+-- disable "Confirm email" in the dashboard (Authentication → Providers → Email),
+-- which also stops confirmation emails from being sent.
+
+create or replace function public.auto_confirm_email()
+returns trigger language plpgsql as $$
+begin
+  if new.email_confirmed_at is null then
+    new.email_confirmed_at := now();
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists auto_confirm_email_trigger on auth.users;
+create trigger auto_confirm_email_trigger
+  before insert on auth.users
+  for each row execute function public.auto_confirm_email();
+
 -- ---------- Request actions ----------
 
 create or replace function public.create_request(p_type text, p_title text default null, p_note text default null)

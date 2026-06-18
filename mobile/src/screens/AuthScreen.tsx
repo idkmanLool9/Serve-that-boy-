@@ -53,10 +53,15 @@ export function AuthScreen() {
           inviteCode: familyMode === 'join' ? inviteCode.trim().toUpperCase() : undefined,
         });
         if (needsConfirmation) {
-          // Email confirmation is enabled on the project: prompt the user.
-          setMode('login');
-          setPassword('');
-          setInfo('Account created! Please confirm your email, then log in.');
+          // New users are auto-confirmed server-side, so signing in works
+          // immediately. Fall back to a prompt only if that somehow fails.
+          try {
+            await signIn(email.trim(), password);
+          } catch {
+            setMode('login');
+            setPassword('');
+            setInfo('Account created! Please log in to continue.');
+          }
         }
         // Otherwise onAuthStateChange signs the user in automatically.
       }
