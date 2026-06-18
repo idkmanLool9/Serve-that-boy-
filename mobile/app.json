@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Family Requests",
+    "slug": "family-requests",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "familyrequests",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#6C5CE7"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.familyrequests.app"
+    },
+    "android": {
+      "package": "com.familyrequests.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6C5CE7"
+      }
+    },
+    "plugins": ["expo-notifications"],
+    "extra": {
+      "apiUrl": "http://localhost:4000"
+    }
+  }
+}

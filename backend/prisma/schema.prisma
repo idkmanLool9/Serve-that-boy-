@@ -1,0 +1,70 @@
+// Prisma schema for the Family Requests app.
+// Uses SQLite so families can run it with zero database setup.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// NOTE: SQLite has no native enum support, so roles/statuses are stored as
+// strings. Allowed values are validated in the application layer (Zod) and
+// reflected in the TypeScript types.
+//   Role:          "CUSTOMER" | "SERVER"
+//   RequestStatus: "PENDING" | "ACCEPTED" | "COMPLETED"
+
+model Family {
+  id         String    @id @default(cuid())
+  name       String
+  inviteCode String    @unique
+  createdAt  DateTime  @default(now())
+
+  members  User[]
+  requests Request[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   // "CUSTOMER" | "SERVER"
+  pushToken    String?
+  createdAt    DateTime @default(now())
+
+  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  familyId String
+
+  // Requests this user created (as the Customer).
+  sentRequests Request[] @relation("CustomerRequests")
+  // Requests this user is handling (as the Server).
+  handledRequests Request[] @relation("ServerRequests")
+}
+
+model Request {
+  id        String        @id @default(cuid())
+  type      String   // preset key: "item" | "ice_cream" | "clothes" | "help" | "custom"
+  title     String   // human-readable summary
+  note      String?  // optional extra detail from the customer
+  status    String   @default("PENDING") // "PENDING" | "ACCEPTED" | "COMPLETED"
+  reply     String?  // optional short reply from the server
+
+  createdAt   DateTime  @default(now())
+  acceptedAt  DateTime?
+  completedAt DateTime?
+
+  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  familyId String
+
+  customer   User   @relation("CustomerRequests", fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String
+
+  server   User?   @relation("ServerRequests", fields: [serverId], references: [id])
+  serverId String?
+
+  @@index([familyId, status])
+  @@index([familyId, createdAt])
+}
