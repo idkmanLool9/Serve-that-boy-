@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { AuthScreen } from '../screens/AuthScreen';
+import { SetupScreen } from '../screens/SetupScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ServeScreen } from '../screens/ServeScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
@@ -90,7 +91,7 @@ function MainTabs() {
 }
 
 export function RootNavigator() {
-  const { user, initializing } = useAuth();
+  const { user, needsSetup, initializing } = useAuth();
   const { theme } = useTheme();
 
   const navTheme = theme.mode === 'dark' ? DarkTheme : DefaultTheme;
@@ -112,7 +113,7 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer theme={themed}>
-      {user ? <MainTabs /> : <AuthScreen />}
+      {user ? <MainTabs /> : needsSetup ? <SetupScreen /> : <AuthScreen />}
     </NavigationContainer>
   );
 }

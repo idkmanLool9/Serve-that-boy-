@@ -99,6 +99,30 @@ export async function login(email: string, password: string): Promise<void> {
   if (error) throw error;
 }
 
+export interface SetupInput {
+  name: string;
+  role: Role;
+  familyName?: string;
+  inviteCode?: string;
+}
+
+/** Finish account setup (create/join a family) for a user with no profile yet. */
+export async function completeSetup(input: SetupInput): Promise<void> {
+  const { error } = await supabase.rpc('setup_account', {
+    p_name: input.name.trim(),
+    p_role: input.role,
+    p_family_name: input.familyName?.trim() || null,
+    p_invite_code: input.inviteCode?.trim().toUpperCase() || null,
+  });
+  if (error) throw error;
+}
+
+/** Whether there is an active auth session (regardless of profile setup). */
+export async function hasActiveSession(): Promise<boolean> {
+  const { data } = await supabase.auth.getSession();
+  return Boolean(data.session);
+}
+
 export async function logout(): Promise<void> {
   await supabase.auth.signOut();
 }

@@ -221,6 +221,39 @@ begin
 end;
 $$;
 
+-- ---------- Finish setup (recovery for users without a profile) ----------
+-- Used by the app when a signed-in user has no profile yet.
+create or replace function public.setup_account(
+  p_name text, p_role text, p_family_name text default null, p_invite_code text default null
+) returns json language plpgsql security definer set search_path = public as $$
+declare v_family_id uuid; v_code text; v_alphabet text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; i int;
+begin
+  if auth.uid() is null then raise exception 'Not authenticated'; end if;
+  if exists (select 1 from profiles where id = auth.uid()) then raise exception 'Account is already set up'; end if;
+  if coalesce(trim(p_name),'') = '' then raise exception 'Name is required'; end if;
+  if p_role not in ('CUSTOMER','SERVER') then raise exception 'Please choose a role'; end if;
+
+  if coalesce(trim(p_family_name),'') <> '' then
+    loop
+      v_code := '';
+      for i in 1..6 loop
+        v_code := v_code || substr(v_alphabet, 1 + floor(random()*length(v_alphabet))::int, 1);
+      end loop;
+      exit when not exists (select 1 from families where invite_code = v_code);
+    end loop;
+    insert into families(name, invite_code) values (trim(p_family_name), v_code) returning id into v_family_id;
+  elsif coalesce(trim(p_invite_code),'') <> '' then
+    select id into v_family_id from families where invite_code = upper(trim(p_invite_code));
+    if v_family_id is null then raise exception 'No family found with that invite code'; end if;
+  else
+    raise exception 'Provide a family name or invite code';
+  end if;
+
+  insert into profiles(id, name, role, family_id) values (auth.uid(), trim(p_name), p_role, v_family_id);
+  return json_build_object('ok', true);
+end;
+$$;
+
 -- ---------- Function execute grants (least privilege) ----------
 
 revoke execute on function public.handle_new_user() from public;
@@ -237,6 +270,9 @@ grant  execute on function public.create_request(text, text, text) to authentica
 grant  execute on function public.accept_request(uuid) to authenticated;
 grant  execute on function public.complete_request(uuid, text) to authenticated;
 grant  execute on function public.reply_request(uuid, text) to authenticated;
+
+revoke execute on function public.setup_account(text, text, text, text) from public;
+grant  execute on function public.setup_account(text, text, text, text) to authenticated;
 
 -- ---------- Realtime ----------
 
